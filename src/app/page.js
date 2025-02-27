@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { fetchPosts, createPost, likePost, addComment } from "@/app/utils/api";
+import { fetchPosts, createPost, likePost, addComment, deletePost, deleteComment, fetchRandomUsers } from "@/app/utils/api";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
@@ -8,20 +8,53 @@ export default function Home() {
   const [posts, setPosts] = useState([]);
   const [newComments, setNewComments] = useState({});
   const [showInput, setShowInput] = useState({});
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [suggestedUsers, setSuggestedUsers] = useState([]);
+  const handleUserClick = (userId) => {
+    router.push(`/Profile/${userId}`);
+  };
   const router = useRouter();
+
+
+  useEffect(() => {
+    const getSuggestedUsers = async () => {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        if (!storedUser) return; 
+        const users = await fetchRandomUsers(storedUser.id); 
+        setSuggestedUsers(users);
+    };
+    getSuggestedUsers();
+}, []);
+
+
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/Login");
+    const userData = localStorage.getItem("user");
+
+    if (!token || !userData) {
+      router.replace("/Login");
     } else {
+      setUser(JSON.parse(userData));
+      setIsLoading(false);
+    }
+  }, []);
+
+
+  useEffect(() => {
+    if (!isLoading) {
       const getPosts = async () => {
         const data = await fetchPosts();
         setPosts(data);
       };
       getPosts();
     }
-  }, []);
+  }, [isLoading]);
+
+
+  if (isLoading) return null;
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,6 +73,7 @@ export default function Home() {
     }
   };
 
+  
   const handleLike = async (id) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -53,7 +87,7 @@ export default function Home() {
     }
   };
 
-
+  
   const handleAddComment = async (id) => {
     if (!newComments[id]?.trim()) return;
 
@@ -71,6 +105,31 @@ export default function Home() {
     }
   };
 
+  
+  const handleDeletePost = async (id) => {
+    if (!confirm("Are you sure you want to delete this post?")) return;
+    const success = await deletePost(id);
+    if (success) {
+      setPosts(posts.filter(post => post._id !== id));
+    }
+  };
+
+
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!confirm("Are you sure you want to delete this comment?")) return;
+
+    const updatedPost = await deleteComment(postId, commentId);
+
+    if (updatedPost) {
+      console.log("✅ Updating UI after comment deletion");
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post._id === postId ? { ...post, comments: updatedPost.comments } : post
+        )
+      );
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center pt-10 mt-20">
@@ -78,10 +137,14 @@ export default function Home() {
       <div className="w-[250px] bg-gray-200 shadow-lg rounded-3xl p-4 h-fit">
         <h2 className="font-bold text-lg mb-4">Suggested Vibe Pals</h2>
         <ul className="space-y-3">
-          {["John Doe", "Jane Smith", "Alice Brown", "Bob White", "Emily Green"].map((pal, index) => (
-            <li key={index} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-300 p-2 rounded-lg">
+          {suggestedUsers.map((pal) => (
+            <li
+              key={pal._id}
+              className="flex items-center space-x-3 cursor-pointer hover:bg-gray-300 p-2 rounded-lg"
+              onClick={() => router.push(`/Profile/${pal._id}`)} 
+            >
               <img src="https://i.pravatar.cc/40" alt="Avatar" className="w-8 h-8 rounded-full" />
-              <span className="font-semibold">{pal}</span>
+              <span className="font-semibold">{pal.name}</span>
             </li>
           ))}
         </ul>
@@ -111,10 +174,16 @@ export default function Home() {
         <div className="mt-10 space-y-4">
           {posts.map((post) => (
             <div key={post._id} className="bg-gray-200 shadow-lg rounded-3xl p-4">
+
               {/* User Info */}
-              <div className="flex items-center space-x-3">
-                <img src="https://i.pravatar.cc/40" alt="User Avatar" className="w-10 h-10 rounded-full" />
-                <p className="font-bold italic">{post.userName || "Unknown"}</p>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-3">
+                  <img src="https://i.pravatar.cc/40" alt="User Avatar" className="w-10 h-10 rounded-full" />
+                  <p className="font-bold italic">{post.userName}</p>
+                </div>
+                {user?.id === post.user && (
+                  <button onClick={() => handleDeletePost(post._id)} className="text-red-500">❌</button>
+                )}
               </div>
 
               {/* Message Content */}
@@ -125,9 +194,8 @@ export default function Home() {
               {/* Interaction Options */}
               <div className="flex space-x-4 justify-between mt-3 text-sm font-semibold italic">
                 <span className="cursor-pointer underline hover:text-purple-800" onClick={() => handleLike(post._id)}>
-                  Feel it! ({post.likes?.length || 0}) 
+                  Feel it! ({post.likes?.length || 0})
                 </span>
-
 
                 <span
                   className="cursor-pointer underline hover:text-purple-800"
@@ -158,12 +226,18 @@ export default function Home() {
 
               {/* Comments List */}
               <div className="mt-3 space-y-2">
-                {(post.comments || []).map((comment, index) => (
-                  <div key={index} className="bg-gray-300 p-2 rounded-lg">
-                    <p className="text-sm text-gray-800">🌐 {comment.text}</p>
+                {post.comments?.map((comment) => (
+                  <div key={comment._id} className="bg-gray-300 p-2 rounded-lg flex justify-between">
+                    <p className="text-sm text-gray-800">
+                      <strong>{comment.user === user?.id ? "Me" : comment.userName}:</strong> {comment.text}
+                    </p>
+                    {comment.user === user?.id && (
+                      <button onClick={() => handleDeleteComment(post._id, comment._id)} className="text-red-500">❌</button>
+                    )}
                   </div>
                 ))}
               </div>
+
             </div>
           ))}
         </div>
