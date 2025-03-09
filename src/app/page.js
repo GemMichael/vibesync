@@ -1,7 +1,19 @@
 "use client";
-import { useState, useEffect } from "react";
-import { fetchPosts, createPost, likePost, addComment, deletePost, deleteComment, fetchRandomUsers } from "@/app/utils/api";
+import { useState, useEffect, useRef } from "react";
+import {
+  fetchPosts,
+  createPost,
+  likePost,
+  addComment,
+  deletePost,
+  deleteComment,
+  fetchRandomUsers,
+  fetchChatUsers,
+  fetchMessages,
+  sendMessage,
+} from "@/app/utils/api";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 
 export default function Home() {
   const [message, setMessage] = useState("");
@@ -11,23 +23,82 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [suggestedUsers, setSuggestedUsers] = useState([]);
+  const [friends, setFriends] = useState([]);
+  const [chatUsers, setChatUsers] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
   const handleUserClick = (userId) => {
     router.push(`/Profile/${userId}`);
   };
   const router = useRouter();
 
+  useEffect(() => {
+    if (!user) return;
+    const loadChatUsers = async () => {
+      try {
+        const users = await fetchChatUsers();
+        setChatUsers(users);
+      } catch (error) {
+        console.error("Error fetching chat users:", error);
+      }
+    };
+    loadChatUsers();
+  }, [user]);
+
+  const openChat = async (friendId) => {
+    setSelectedChat(friendId);
+    const chatMessages = await fetchMessages(friendId);
+    setMessages(chatMessages);
+  };
+
+  const closeChat = () => {
+    setSelectedChat(null);
+    setMessages([]);
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+
+    try {
+      const sentMessage = await sendMessage(selectedChat, newMessage);
+      if (sentMessage) {
+        setMessages((prevMessages) => [...prevMessages, sentMessage]);
+        setNewMessage("");
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      alert("Failed to send message.");
+    }
+  };
+
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const loggedInUser = JSON.parse(localStorage.getItem("user"));
+        if (!loggedInUser) return;
+
+        const response = await axios.get(
+          `http://localhost:5000/api/auth/user/${loggedInUser.id}`
+        );
+        setFriends(response.data.friends);
+      } catch (error) {
+        console.error("Error fetching friends:", error);
+      }
+    };
+
+    fetchFriends();
+  }, []);
 
   useEffect(() => {
     const getSuggestedUsers = async () => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (!storedUser) return; 
-        const users = await fetchRandomUsers(storedUser.id); 
-        setSuggestedUsers(users);
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      if (!storedUser) return;
+      const users = await fetchRandomUsers(storedUser.id);
+      setSuggestedUsers(users);
     };
     getSuggestedUsers();
-}, []);
-
-
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -41,7 +112,6 @@ export default function Home() {
     }
   }, []);
 
-
   useEffect(() => {
     if (!isLoading) {
       const getPosts = async () => {
@@ -52,9 +122,7 @@ export default function Home() {
     }
   }, [isLoading]);
 
-
   if (isLoading) return null;
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,7 +141,6 @@ export default function Home() {
     }
   };
 
-  
   const handleLike = async (id) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -83,11 +150,10 @@ export default function Home() {
 
     const updatedPost = await likePost(id, token);
     if (updatedPost) {
-      setPosts(posts.map(post => post._id === id ? updatedPost : post));
+      setPosts(posts.map((post) => (post._id === id ? updatedPost : post)));
     }
   };
 
-  
   const handleAddComment = async (id) => {
     if (!newComments[id]?.trim()) return;
 
@@ -99,21 +165,19 @@ export default function Home() {
 
     const updatedPost = await addComment(id, newComments[id], token);
     if (updatedPost) {
-      setPosts(posts.map(post => post._id === id ? updatedPost : post));
+      setPosts(posts.map((post) => (post._id === id ? updatedPost : post)));
       setNewComments({ ...newComments, [id]: "" });
       setShowInput({ ...showInput, [id]: false });
     }
   };
 
-  
   const handleDeletePost = async (id) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
     const success = await deletePost(id);
     if (success) {
-      setPosts(posts.filter(post => post._id !== id));
+      setPosts(posts.filter((post) => post._id !== id));
     }
   };
-
 
   const handleDeleteComment = async (postId, commentId) => {
     if (!confirm("Are you sure you want to delete this comment?")) return;
@@ -122,18 +186,45 @@ export default function Home() {
 
     if (updatedPost) {
       console.log("✅ Updating UI after comment deletion");
-      setPosts(prevPosts =>
-        prevPosts.map(post =>
-          post._id === postId ? { ...post, comments: updatedPost.comments } : post
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post._id === postId
+            ? { ...post, comments: updatedPost.comments }
+            : post
         )
       );
     }
   };
 
+  const handleUnfriend = async (friendId) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("You need to be logged in to unfriend.");
+        return;
+      }
+
+      const response = await axios.post(
+        `http://localhost:5000/api/auth/unfriend/${friendId}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      alert(response.data.message);
+      setFriends(friends.filter((friend) => friend._id !== friendId));
+    } catch (error) {
+      console.error(
+        "Error unfriending:",
+        error.response?.data || error.message
+      );
+      alert("Failed to unfriend.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center pt-10 mt-20">
-      {/* Left Sidebar - Suggested Vibe Pals */}
       <div className="w-[250px] bg-gray-200 shadow-lg rounded-3xl p-4 h-fit">
         <h2 className="font-bold text-lg mb-4">Suggested Vibe Pals</h2>
         <ul className="space-y-3">
@@ -141,20 +232,27 @@ export default function Home() {
             <li
               key={pal._id}
               className="flex items-center space-x-3 cursor-pointer hover:bg-gray-300 p-2 rounded-lg"
-              onClick={() => router.push(`/Profile/${pal._id}`)} 
+              onClick={() => router.push(`/Profile/${pal._id}`)}
             >
-              <img src="https://i.pravatar.cc/40" alt="Avatar" className="w-8 h-8 rounded-full" />
+              <img
+                src="https://i.pravatar.cc/40"
+                alt="Avatar"
+                className="w-8 h-8 rounded-full"
+              />
               <span className="font-semibold">{pal.name}</span>
             </li>
           ))}
         </ul>
       </div>
 
-      {/* Main Content - Posts & Form */}
       <div className="w-[650px] mx-10 h-screen overflow-y-auto scrollbar-hide">
-        {/* Form Section */}
-        <form onSubmit={handleSubmit} className="bg-white shadow-lg rounded-3xl p-6 flex flex-col items-center relative">
-          <p className="text-lg font-medium mb-3">Got a vibe? Let's hear it. 🌐</p>
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white shadow-lg rounded-3xl p-6 flex flex-col items-center relative"
+        >
+          <p className="text-lg font-medium mb-3">
+            Got a vibe? Let's hear it. 🌐
+          </p>
           <input
             type="text"
             value={message}
@@ -170,48 +268,64 @@ export default function Home() {
           </button>
         </form>
 
-        {/* Posts Section */}
         <div className="mt-10 space-y-4">
           {posts.map((post) => (
-            <div key={post._id} className="bg-gray-200 shadow-lg rounded-3xl p-4">
-
-              {/* User Info */}
+            <div
+              key={post._id}
+              className="bg-gray-200 shadow-lg rounded-3xl p-4"
+            >
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-3">
-                  <img src="https://i.pravatar.cc/40" alt="User Avatar" className="w-10 h-10 rounded-full" />
+                  <img
+                    src="https://i.pravatar.cc/40"
+                    alt="User Avatar"
+                    className="w-10 h-10 rounded-full"
+                  />
                   <p className="font-bold italic">{post.userName}</p>
                 </div>
                 {user?.id === post.user && (
-                  <button onClick={() => handleDeletePost(post._id)} className="text-red-500">❌</button>
+                  <button
+                    onClick={() => handleDeletePost(post._id)}
+                    className="text-red-500"
+                  >
+                    ❌
+                  </button>
                 )}
               </div>
 
-              {/* Message Content */}
               <div className="bg-gray-100 p-4 rounded-xl mt-2">
                 <p className="text-gray-800">{post.text}</p>
               </div>
 
-              {/* Interaction Options */}
               <div className="flex space-x-4 justify-between mt-3 text-sm font-semibold italic">
-                <span className="cursor-pointer underline hover:text-purple-800" onClick={() => handleLike(post._id)}>
+                <span
+                  className="cursor-pointer underline hover:text-purple-800"
+                  onClick={() => handleLike(post._id)}
+                >
                   Feel it! ({post.likes?.length || 0})
                 </span>
 
                 <span
                   className="cursor-pointer underline hover:text-purple-800"
-                  onClick={() => setShowInput({ ...showInput, [post._id]: true })}
+                  onClick={() =>
+                    setShowInput({ ...showInput, [post._id]: true })
+                  }
                 >
                   Add your vibe
                 </span>
               </div>
 
-              {/* Comment Input */}
               {showInput[post._id] && (
                 <div className="mt-3">
                   <input
                     type="text"
                     value={newComments[post._id] || ""}
-                    onChange={(e) => setNewComments({ ...newComments, [post._id]: e.target.value })}
+                    onChange={(e) =>
+                      setNewComments({
+                        ...newComments,
+                        [post._id]: e.target.value,
+                      })
+                    }
                     placeholder="Type your comment..."
                     className="w-full p-2 border border-gray-300 rounded-lg"
                   />
@@ -224,50 +338,155 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Comments List */}
               <div className="mt-3 space-y-2">
                 {post.comments?.map((comment) => (
-                  <div key={comment._id} className="bg-gray-300 p-2 rounded-lg flex justify-between">
+                  <div
+                    key={comment._id}
+                    className="bg-gray-300 p-2 rounded-lg flex justify-between"
+                  >
                     <p className="text-sm text-gray-800">
-                      <strong>{comment.user === user?.id ? "Me" : comment.userName}:</strong> {comment.text}
+                      <strong>
+                        {comment.user === user?.id ? "Me" : comment.userName}:
+                      </strong>{" "}
+                      {comment.text}
                     </p>
                     {comment.user === user?.id && (
-                      <button onClick={() => handleDeleteComment(post._id, comment._id)} className="text-red-500">❌</button>
+                      <button
+                        onClick={() =>
+                          handleDeleteComment(post._id, comment._id)
+                        }
+                        className="text-red-500"
+                      >
+                        ❌
+                      </button>
                     )}
                   </div>
                 ))}
               </div>
-
             </div>
           ))}
         </div>
       </div>
 
-      {/* Right Sidebar - Friends & Messages */}
       <div className="w-[250px]">
-        {/* Friends List */}
         <div className="bg-gray-200 shadow-lg rounded-3xl p-4 mb-4">
           <h2 className="font-bold text-lg mb-4">Friends</h2>
-          {["John Doe", "Jane Smith", "Alice Brown", "Bob White", "Emily Green"].map((pal, index) => (
-            <div key={index} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-300 p-2 rounded-lg">
-              <img src="https://i.pravatar.cc/40" alt="Avatar" className="w-8 h-8 rounded-full" />
-              <span className="font-semibold">{pal}</span>
-            </div>
-          ))}
+          {friends.length > 0 ? (
+            friends.map((friend) => (
+              <div
+                key={friend._id}
+                className="flex items-center justify-between cursor-pointer hover:bg-gray-300 p-2 rounded-lg"
+              >
+                <div
+                  className="flex items-center space-x-3"
+                  onClick={() => {
+                    console.log("Navigating to profile:", friend._id);
+                    router.push(`/Profile/${friend._id}`);
+                  }}
+                >
+                  <img
+                    src="https://i.pravatar.cc/40"
+                    alt="Avatar"
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <span className="font-semibold">{friend.name}</span>
+                </div>
+                <button
+                  onClick={() => handleUnfriend(friend._id)}
+                  className="text-red-500 text-sm"
+                >
+                  Unfriend
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500 italic">No friends yet.</p>
+          )}
         </div>
 
-        {/* Messages List */}
-        <div className="bg-gray-200 shadow-lg rounded-3xl p-4">
+        <div className="w-[250px] bg-gray-200 shadow-lg rounded-3xl p-4">
           <h2 className="font-bold text-lg mb-4">Messages</h2>
-          {["John Doe", "Jane Smith", "Alice Brown", "Bob White", "Emily Green"].map((pal, index) => (
-            <div key={index} className="flex items-center justify-between cursor-pointer hover:bg-gray-300 p-2 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <img src="https://i.pravatar.cc/40" alt="Avatar" className="w-8 h-8 rounded-full" />
-                <span className="font-semibold">{pal}</span>
+
+          {chatUsers.length > 0 ? (
+            chatUsers.map((user) => (
+              <div
+                key={user._id}
+                className="flex items-center justify-between cursor-pointer hover:bg-gray-300 p-2 rounded-lg transition"
+                onClick={() => openChat(user._id)}
+              >
+                <div className="flex items-center space-x-3">
+                  <img
+                    src="https://i.pravatar.cc/40"
+                    alt="Avatar"
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <span className="font-semibold">{user.name}</span>
+                </div>
               </div>
-              <span className="text-gray-500">Hey...</span>
+            ))
+          ) : (
+            <p className="text-gray-500 italic">No chats yet.</p>
+          )}
+
+          {selectedChat && (
+            <div className="fixed bottom-10 right-10 w-[320px] bg-white p-4 shadow-2xl rounded-2xl border border-gray-300">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold">Chat</h3>
+                <button
+                  onClick={closeChat}
+                  className="text-red-500 hover:text-red-700 text-lg font-bold transition"
+                  aria-label="Close chat"
+                >
+                  ✖
+                </button>
+              </div>
+
+              <div className="h-64 overflow-y-auto space-y-2 p-2 border rounded-lg bg-gray-100 flex flex-col">
+                {messages.length > 0 ? (
+                  messages.map((msg) => (
+                    <div
+                      key={msg._id || Math.random()}
+                      className={`flex ${
+                        msg.sender === selectedChat
+                          ? "justify-start"
+                          : "justify-end"
+                      }`}
+                    >
+                      <div
+                        className={`p-2 max-w-[75%] rounded-lg ${
+                          msg.sender === selectedChat
+                            ? "bg-gray-300 text-black self-start"
+                            : "bg-purple-500 text-white self-end"
+                        }`}
+                      >
+                        {msg.text}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic text-center">
+                    No messages yet.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex mt-3">
+                <input
+                  type="text"
+                  className="flex-1 p-2 border border-gray-300 rounded-l-lg outline-none focus:ring-2 focus:ring-purple-500"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Type a message..."
+                />
+                <button
+                  className="bg-purple-600 text-white px-4 py-2 rounded-r-lg hover:bg-purple-700 transition"
+                  onClick={handleSendMessage}
+                >
+                  Send
+                </button>
+              </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

@@ -4,16 +4,16 @@ const Post = require("../models/Post");
 const auth = require("../middleware/auth");
 const User = require("../models/User");
 
-// ✅ Fetch all posts (Optimized)
+
 router.get("/", async (req, res) => {
   try {
     const posts = await Post.find()
       .sort({ createdAt: -1 })
       .select("_id text likes comments user userName")
-      .populate("user", "name"); 
+      .populate("user", "name");
 
-    // Only return the first 3 comments for performance
-    const formattedPosts = posts.map(post => ({
+
+    const formattedPosts = posts.map((post) => ({
       ...post.toObject(),
       comments: post.comments.slice(0, 3),
     }));
@@ -25,13 +25,14 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ Create a new post (Optimized)
+
 router.post("/", auth, async (req, res) => {
   try {
     const { text } = req.body;
-    if (!text.trim()) return res.status(400).json({ error: "Text is required" });
+    if (!text.trim())
+      return res.status(400).json({ error: "Text is required" });
 
-    const user = await User.findById(req.user.id).lean(); 
+    const user = await User.findById(req.user.id).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const newPost = await Post.create({
@@ -49,7 +50,7 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
-// ✅ Like a post (Prevent self-likes)
+
 router.patch("/:id/like", auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
@@ -74,11 +75,12 @@ router.patch("/:id/like", auth, async (req, res) => {
   }
 });
 
-// ✅ Add a comment (Prevent empty comments)
+
 router.post("/:id/comment", auth, async (req, res) => {
   try {
     const { comment } = req.body;
-    if (!comment.trim()) return res.status(400).json({ error: "Comment cannot be empty" });
+    if (!comment.trim())
+      return res.status(400).json({ error: "Comment cannot be empty" });
 
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ error: "Post not found" });
@@ -86,7 +88,11 @@ router.post("/:id/comment", auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    post.comments.push({ text: comment.trim(), user: user._id, userName: user.name });
+    post.comments.push({
+      text: comment.trim(),
+      user: user._id,
+      userName: user.name,
+    });
     await post.save();
 
     res.json(post);
@@ -96,13 +102,18 @@ router.post("/:id/comment", auth, async (req, res) => {
   }
 });
 
-// ✅ Delete a post (Optimized)
+
 router.delete("/:id", auth, async (req, res) => {
   try {
-    const post = await Post.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+    const post = await Post.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user.id,
+    });
 
     if (!post) {
-      return res.status(404).json({ error: "Post not found or unauthorized to delete" });
+      return res
+        .status(404)
+        .json({ error: "Post not found or unauthorized to delete" });
     }
 
     res.json({ message: "✅ Post deleted successfully" });
@@ -112,19 +123,26 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
-// ✅ Delete a comment (Only the owner can delete)
+
 router.delete("/:postId/comments/:commentId", auth, async (req, res) => {
   try {
-    console.log(`🗑️ Deleting comment: Post ID: ${req.params.postId}, Comment ID: ${req.params.commentId}`);
+    console.log(
+      `🗑️ Deleting comment: Post ID: ${req.params.postId}, Comment ID: ${req.params.commentId}`
+    );
 
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ error: "Post not found" });
 
-    const commentIndex = post.comments.findIndex(c => c._id.toString() === req.params.commentId);
-    if (commentIndex === -1) return res.status(404).json({ error: "Comment not found" });
+    const commentIndex = post.comments.findIndex(
+      (c) => c._id.toString() === req.params.commentId
+    );
+    if (commentIndex === -1)
+      return res.status(404).json({ error: "Comment not found" });
 
     if (post.comments[commentIndex].user.toString() !== req.user.id) {
-      return res.status(403).json({ error: "Unauthorized to delete this comment" });
+      return res
+        .status(403)
+        .json({ error: "Unauthorized to delete this comment" });
     }
 
     post.comments.splice(commentIndex, 1);
@@ -138,10 +156,12 @@ router.delete("/:postId/comments/:commentId", auth, async (req, res) => {
   }
 });
 
-// ✅ Fetch posts by user
+
 router.get("/user/:userId", async (req, res) => {
   try {
-    const posts = await Post.find({ user: req.params.userId }).sort({ createdAt: -1 });
+    const posts = await Post.find({ user: req.params.userId }).sort({
+      createdAt: -1,
+    });
     res.json(posts);
   } catch (error) {
     console.error("❌ Error fetching user posts:", error);
