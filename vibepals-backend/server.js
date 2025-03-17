@@ -9,14 +9,12 @@ const app = express();
 
 app.use(express.json());
 
-app.use(
-  cors({
-    origin: ["https://vibesync-m13u90md4-gemmichaels-projects.vercel.app"], 
-    methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS", 
-    allowedHeaders: "Content-Type,Authorization", 
-    credentials: true, 
-  })
-);
+app.use(cors({
+  origin: "*", 
+  credentials: true,
+  methods: "GET,POST,PUT,DELETE,OPTIONS",
+  allowedHeaders: "Content-Type,Authorization",
+}));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", postsRoutes);
