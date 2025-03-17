@@ -7,6 +7,10 @@ const auth = require("../middleware/auth");
 
 const router = express.Router();
 
+router.get("/", (req, res) => {
+  res.json({ message: "Auth route is working!" });
+});
+
 
 router.post("/signup", async (req, res) => {
   console.log("📩 Received signup request:", req.body);
