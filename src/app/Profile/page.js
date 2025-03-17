@@ -7,6 +7,7 @@ export default function ProfilePage() {
   const [posts, setPosts] = useState([]);
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
     try {

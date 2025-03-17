@@ -32,6 +32,7 @@ export default function Home() {
     router.push(`/Profile/${userId}`);
   };
   const router = useRouter();
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
     if (!user) return;
@@ -79,7 +80,7 @@ export default function Home() {
         if (!loggedInUser) return;
 
         const response = await axios.get(
-          `http://localhost:5000/api/auth/user/${loggedInUser.id}`
+          `${API_BASE_URL}/api/auth/user/${loggedInUser.id}`
         );
         setFriends(response.data.friends);
       } catch (error) {
@@ -205,12 +206,13 @@ export default function Home() {
       }
 
       const response = await axios.post(
-        `http://localhost:5000/api/auth/unfriend/${friendId}`,
+        `${API_BASE_URL}/api/auth/unfriend/${friendId}`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      
 
       alert(response.data.message);
       setFriends(friends.filter((friend) => friend._id !== friendId));

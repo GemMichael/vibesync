@@ -173,7 +173,7 @@ export const searchUsers = async (query) => {
 export const sendMessage = async (recipientId, text) => {
   try {
     const response = await axios.post(
-      `http://localhost:5000/api/auth/message/${recipientId}`,
+      `${AUTH_API}/message/${recipientId}`,
       { text },
       {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -192,7 +192,7 @@ export const sendMessage = async (recipientId, text) => {
 export const fetchMessages = async (friendId) => {
   try {
     const response = await axios.get(
-      `http://localhost:5000/api/auth/messages/${friendId}`,
+      `${AUTH_API}/messages/${friendId}`,
       {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       }
@@ -210,7 +210,7 @@ export const fetchMessages = async (friendId) => {
 export const fetchUser = async (userId) => {
   try {
     const response = await axios.get(
-      `http://localhost:5000/api/auth/user/${userId}`,
+      `${AUTH_API}/user/${userId}`,
       {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       }
@@ -227,7 +227,8 @@ export const fetchUser = async (userId) => {
 
 export const fetchChatUsers = async () => {
   try {
-    const response = await axios.get("http://localhost:5000/api/auth/chats", {
+    const response = await axios.get(      `${AUTH_API}/chats`,
+      {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
     return response.data;

@@ -17,7 +17,7 @@ export default function Navbar() {
     }
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/auth/search?query=${searchQuery}`
+       `${process.env.NEXT_PUBLIC_API_URL}/api/auth/search?query=${searchQuery}`
       );
       setResults(response.data);
     } catch (error) {
