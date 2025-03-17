@@ -11,8 +11,10 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: "https://vibesync-gemmichaels-projects.vercel.app/",
-    credentials: true,
+    origin: ["https://vibesync-m13u90md4-gemmichaels-projects.vercel.app"], 
+    methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS", 
+    allowedHeaders: "Content-Type,Authorization", 
+    credentials: true, 
   })
 );
 
