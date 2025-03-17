@@ -9,14 +9,17 @@ const app = express();
 
 app.use(express.json());
 
+const cors = require("cors");
 app.use(
   cors({
-    origin: ["https://vibesync-rho.vercel.app"], 
-    methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS", 
-    allowedHeaders: "Content-Type,Authorization", 
-    credentials: true, 
+    origin: "*", 
+    methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    allowedHeaders: "Content-Type,Authorization",
+    credentials: true,
   })
 );
+
+app.options("*", cors());
 
 
 app.use("/api/auth", authRoutes);
