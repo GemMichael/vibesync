@@ -16,12 +16,26 @@ app.get("/", (req, res) => {
 
 app.use(
   cors({
-    origin: "https://vibesync-mr3fx7c11-gemmichaels-projects.vercel.app/", 
+    origin: function (origin, callback) {
+      const allowedOrigins = [
+        "https://vibesync-gemmichaels-projects.vercel.app",
+        "https://vibesync-mr3fx7c11-gemmichaels-projects.vercel.app",
+        "http://localhost:3000", 
+      ];
+
+      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed"), false);
+      }
+    },
     methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
     allowedHeaders: "Content-Type,Authorization",
     credentials: true,
   })
 );
+
 
 app.options("*", cors());
 
