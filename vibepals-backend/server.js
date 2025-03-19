@@ -9,6 +9,10 @@ const app = express();
 
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send("🚀 VibeSync Backend is Running!");
+});
+
 
 app.use(
   cors({
