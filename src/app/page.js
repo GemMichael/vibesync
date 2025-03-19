@@ -171,7 +171,13 @@ export default function Home() {
       return;
     }
 
-    const updatedPost = await addComment(id, newComments[id], token);
+    const response = await axios.post(`${API_BASE_URL}/api/posts/${postId}/comment`, {
+      comment: newComments[postId],
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    
+    const updatedPost = response.data;
     if (updatedPost) {
       setPosts(posts.map((post) => (post._id === id ? updatedPost : post)));
       setNewComments({ ...newComments, [id]: "" });
