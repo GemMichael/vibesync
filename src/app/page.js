@@ -139,7 +139,9 @@ export default function Home() {
       return;
     }
 
-    const newPost = await createPost(message, token);
+    const newPost = await axios.post(`${API_BASE_URL}/api/posts`, { text: message }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     if (newPost) {
       setPosts([newPost, ...posts]);
       setMessage("");
