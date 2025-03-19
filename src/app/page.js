@@ -116,8 +116,12 @@ export default function Home() {
   useEffect(() => {
     if (!isLoading) {
       const getPosts = async () => {
-        const data = await fetchPosts();
-        setPosts(data);
+        try {
+          const response = await axios.get(`${API_BASE_URL}/api/posts`); 
+          setPosts(response.data);
+        } catch (error) {
+          console.error("❌ Error fetching posts:", error);
+        }
       };
       getPosts();
     }
