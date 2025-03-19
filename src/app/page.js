@@ -95,7 +95,8 @@ export default function Home() {
     const getSuggestedUsers = async () => {
       const storedUser = JSON.parse(localStorage.getItem("user"));
       if (!storedUser) return;
-      const users = await fetchRandomUsers(storedUser.id);
+      const response = await axios.get(`${API_BASE_URL}/api/auth/random-users?userId=${storedUser.id}`);
+      const users = response.data;
       setSuggestedUsers(users);
     };
     getSuggestedUsers();
