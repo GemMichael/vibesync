@@ -16,7 +16,7 @@ app.get("/", (req, res) => {
 
 app.use(
   cors({
-    origin: "https://vibesync-gemmichaels-projects.vercel.app/", 
+    origin: "https://vibesync-mr3fx7c11-gemmichaels-projects.vercel.app/", 
     methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
     allowedHeaders: "Content-Type,Authorization",
     credentials: true,
