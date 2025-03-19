@@ -115,7 +115,7 @@ export default function ProfilePage() {
         }
 
         const userRes = await axios.get(
-          `http://localhost:5000/api/auth/user/${userId}`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/user/${userId}`
         );
         setUser(userRes.data);
 
