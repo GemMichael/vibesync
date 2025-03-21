@@ -43,16 +43,11 @@ export default function Messages() {
     try {
       const sentMessage = await sendMessage(friendId, newMessage);
       if (sentMessage) {
-        setMessages((prevMessages) => {
-          const isDuplicate = prevMessages.some(
-            (msg) => msg._id === sentMessage._id
-          );
-          return isDuplicate ? prevMessages : [...prevMessages, sentMessage];
-        });
+        setMessages((prevMessages) => [...prevMessages, sentMessage]);
         setNewMessage("");
       }
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("❌ Error sending message:", error);
       alert("Failed to send message.");
     }
   };

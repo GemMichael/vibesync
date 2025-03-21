@@ -53,29 +53,25 @@ export default function ProfilePage() {
     fetchUserData();
   }, [userId]);
 
-  const handleAddFriend = async () => {
+  const handleAddFriend = async (friendId) => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return alert("You need to be logged in to add a friend.");
-
+  
       const response = await axios.post(
-        `http://localhost:5000/api/auth/add-friend/${userId}`,
+        `${API_BASE_URL}/api/auth/add-friend/${friendId}`,
         {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      alert(response.data.message);
-      setIsFriend(true);
+  
+      setFriends([...friends, { _id: friendId, name: response.data.name }]);
+      alert("Friend added successfully!");
     } catch (error) {
-      console.error(
-        "Error adding friend:",
-        error.response?.data || error.message
-      );
-      alert("Failed to add friend.");
+      console.error("❌ Error adding friend:", error);
+      alert(error.response?.data?.error || "Failed to add friend.");
     }
   };
+  
 
   const handleUnfriend = async () => {
     try {

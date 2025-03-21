@@ -39,22 +39,18 @@ export const createPost = async (text) => {
 
 export const likePost = async (id) => {
   try {
-    console.log(`👍 Attempting to like post with ID: ${id}`);
     const response = await axios.patch(
       `${POSTS_API}/${id}/like`,
       {},
       getAuthHeaders()
     );
-    console.log("✅ Like response:", response.data);
     return response.data;
   } catch (error) {
-    console.error(
-      "❌ Error liking post:",
-      error.response?.data || error.message
-    );
+    console.error("❌ Error liking post:", error.response?.data || error.message);
     return null;
   }
 };
+
 
 export const addComment = async (postId, comment) => {
   try {

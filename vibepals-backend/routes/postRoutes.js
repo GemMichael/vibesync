@@ -52,25 +52,28 @@ router.patch("/:id/like", auth, async (req, res) => {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ error: "Post not found" });
 
-    if (post.likes.includes(req.user.id)) {
-      post.likes = post.likes.filter((userId) => userId !== req.user.id);
+    const userId = req.user.id;
+    const index = post.likes.findIndex(id => id.toString() === userId);
+
+    if (index === -1) {
+      post.likes.push(userId);  
     } else {
-      post.likes.push(req.user.id);
+      post.likes.splice(index, 1);  
     }
 
     await post.save();
-    res.json(post);
+    res.json({ message: "Like updated", likes: post.likes.length });
   } catch (error) {
     console.error("❌ Error handling like:", error);
     res.status(500).json({ error: "Failed to like post" });
   }
 });
 
+
 router.post("/:id/comment", auth, async (req, res) => {
   try {
     const { comment } = req.body;
-    if (!comment.trim())
-      return res.status(400).json({ error: "Comment cannot be empty" });
+    if (!comment.trim()) return res.status(400).json({ error: "Comment cannot be empty" });
 
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ error: "Post not found" });
@@ -78,14 +81,16 @@ router.post("/:id/comment", auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    post.comments.push({
+    const newComment = {
       text: comment.trim(),
       user: user._id,
       userName: user.name,
-    });
+    };
+
+    post.comments.push(newComment);
     await post.save();
 
-    res.json(post);
+    res.json({ message: "Comment added", post });
   } catch (error) {
     console.error("❌ Error adding comment:", error);
     res.status(500).json({ error: "Failed to add comment" });
@@ -98,9 +103,7 @@ router.delete("/:id", auth, async (req, res) => {
     if (!post) return res.status(404).json({ error: "Post not found" });
 
     if (post.user.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .json({ error: "Unauthorized to delete this post" });
+      return res.status(403).json({ error: "Unauthorized to delete this post" });
     }
 
     await post.deleteOne();
@@ -111,31 +114,28 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+
 router.delete("/:postId/comments/:commentId", auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ error: "Post not found" });
 
-    const commentIndex = post.comments.findIndex(
-      (c) => c._id.toString() === req.params.commentId
-    );
-    if (commentIndex === -1)
-      return res.status(404).json({ error: "Comment not found" });
+    const commentIndex = post.comments.findIndex(c => c._id.toString() === req.params.commentId);
+    if (commentIndex === -1) return res.status(404).json({ error: "Comment not found" });
 
     if (post.comments[commentIndex].user.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .json({ error: "Unauthorized to delete this comment" });
+      return res.status(403).json({ error: "Unauthorized to delete this comment" });
     }
 
     post.comments.splice(commentIndex, 1);
     await post.save();
-    res.json({ message: "Comment deleted successfully", post });
+    res.json({ message: "Comment deleted", post });
   } catch (error) {
     console.error("❌ Error deleting comment:", error);
     res.status(500).json({ error: "Failed to delete comment" });
   }
 });
+
 
 router.get("/user/:userId", async (req, res) => {
   try {
