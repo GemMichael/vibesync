@@ -1,9 +1,9 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-const POSTS_API = `${API_BASE_URL}/api/posts`;
-const AUTH_API = `${API_BASE_URL}/api/auth`;
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const POSTS_API = `${API_BASE_URL}/posts`;
+const AUTH_API = `${API_BASE_URL}/auth`;
 
 const getAuthHeaders = () => {
   if (typeof window === "undefined") return {};
@@ -39,16 +39,18 @@ export const createPost = async (text) => {
 
 export const likePost = async (id) => {
   try {
+    console.log(`👍 Attempting to like post with ID: ${id}`);
     const response = await axios.patch(
       `${POSTS_API}/${id}/like`,
       {},
       getAuthHeaders()
     );
-    return response.data.post;
+    console.log("✅ Like response:", response.data);
+    return response.data;
   } catch (error) {
     console.error(
       "❌ Error liking post:",
-      error.response?.data || error.message
+      error.response?.data || error.messagez
     );
     return null;
   }
@@ -61,13 +63,15 @@ export const addComment = async (postId, comment) => {
       { comment },
       getAuthHeaders()
     );
-    return response.data.post;
+    return response.data;
   } catch (error) {
-    console.error("❌ Error adding comment:", error.response?.data || error.message);
+    console.error(
+      "❌ Error adding comment:",
+      error.response?.data || error.message
+    );
     return null;
   }
 };
-
 
 export const deleteComment = async (postId, commentId) => {
   try {
@@ -187,9 +191,12 @@ export const sendMessage = async (recipientId, text) => {
 
 export const fetchMessages = async (friendId) => {
   try {
-    const response = await axios.get(`${AUTH_API}/messages/${friendId}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+    const response = await axios.get(
+      `${AUTH_API}/messages/${friendId}`,
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }
+    );
     return response.data;
   } catch (error) {
     console.error(
@@ -202,9 +209,12 @@ export const fetchMessages = async (friendId) => {
 
 export const fetchUser = async (userId) => {
   try {
-    const response = await axios.get(`${AUTH_API}/user/${userId}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+    const response = await axios.get(
+      `${AUTH_API}/user/${userId}`,
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }
+    );
     return response.data;
   } catch (error) {
     console.error(
@@ -217,7 +227,8 @@ export const fetchUser = async (userId) => {
 
 export const fetchChatUsers = async () => {
   try {
-    const response = await axios.get(`${AUTH_API}/chats`, {
+    const response = await axios.get(      `${AUTH_API}/chats`,
+      {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
     return response.data;

@@ -24,8 +24,83 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [suggestedUsers, setSuggestedUsers] = useState([]);
   const [friends, setFriends] = useState([]);
+  const [chatUsers, setChatUsers] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const handleUserClick = (userId) => {
+    router.push(`/Profile/${userId}`);
+  };
   const router = useRouter();
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
+  useEffect(() => {
+    if (!user) return;
+    const loadChatUsers = async () => {
+      try {
+        const users = await fetchChatUsers();
+        setChatUsers(users);
+      } catch (error) {
+        console.error("Error fetching chat users:", error);
+      }
+    };
+    loadChatUsers();
+  }, [user]);
+
+  const openChat = async (friendId) => {
+    setSelectedChat(friendId);
+    const chatMessages = await fetchMessages(friendId);
+    setMessages(chatMessages);
+  };
+
+  const closeChat = () => {
+    setSelectedChat(null);
+    setMessages([]);
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+
+    try {
+      const sentMessage = await sendMessage(selectedChat, newMessage);
+      if (sentMessage) {
+        setMessages((prevMessages) => [...prevMessages, sentMessage]);
+        setNewMessage("");
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      alert("Failed to send message.");
+    }
+  };
+
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const loggedInUser = JSON.parse(localStorage.getItem("user"));
+        if (!loggedInUser) return;
+
+        const response = await axios.get(
+          `${API_BASE_URL}/api/auth/user/${loggedInUser.id}`
+        );
+        setFriends(response.data.friends);
+      } catch (error) {
+        console.error("Error fetching friends:", error);
+      }
+    };
+
+    fetchFriends();
+  }, []);
+
+  useEffect(() => {
+    const getSuggestedUsers = async () => {
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      if (!storedUser) return;
+      const response = await axios.get(`${API_BASE_URL}/api/auth/random-users?userId=${storedUser.id}`);
+      const users = response.data;
+      setSuggestedUsers(users);
+    };
+    getSuggestedUsers();
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -41,52 +116,23 @@ export default function Home() {
 
   useEffect(() => {
     if (!isLoading) {
-      fetchPosts();
-      fetchFriends();
-      getSuggestedUsers();
+      const getPosts = async () => {
+        try {
+          const response = await axios.get(`${API_BASE_URL}/api/posts`); 
+          setPosts(response.data);
+        } catch (error) {
+          console.error("❌ Error fetching posts:", error);
+        }
+      };
+      getPosts();
     }
   }, [isLoading]);
 
-  const fetchPosts = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/posts`);
-      setPosts(response.data);
-    } catch (error) {
-      console.error("❌ Error fetching posts:", error);
-    }
-  };
-
-  const fetchFriends = async () => {
-    try {
-      const loggedInUser = JSON.parse(localStorage.getItem("user"));
-      if (!loggedInUser) return;
-
-      const response = await axios.get(
-        `${API_BASE_URL}/api/auth/user/${loggedInUser.id}`
-      );
-      setFriends(response.data.friends);
-    } catch (error) {
-      console.error("❌ Error fetching friends:", error);
-    }
-  };
-
-  const getSuggestedUsers = async () => {
-    try {
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      if (!storedUser) return;
-
-      const response = await axios.get(
-        `${API_BASE_URL}/api/auth/random-users?userId=${storedUser.id}`
-      );
-      setSuggestedUsers(response.data);
-    } catch (error) {
-      console.error("❌ Error fetching suggested users:", error);
-    }
-  };
+  if (isLoading) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (message.trim() === "") return;
 
     const token = localStorage.getItem("token");
     if (!token) {
@@ -94,14 +140,12 @@ export default function Home() {
       return;
     }
 
-    try {
-      const newPost = await createPost(message);
-      if (newPost) {
-        setPosts((prevPosts) => [newPost, ...prevPosts]);
-        setMessage("");
-      }
-    } catch (error) {
-      console.error("❌ Error creating post:", error);
+    const newPost = await axios.post(`${API_BASE_URL}/api/posts`, { text: message }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (newPost) {
+      setPosts([newPost, ...posts]);
+      setMessage("");
     }
   };
 
@@ -112,68 +156,57 @@ export default function Home() {
       return;
     }
 
-    try {
-      const updatedPost = await likePost(id);
-      if (updatedPost) {
-        setPosts((prevPosts) =>
-          prevPosts.map((post) => (post._id === id ? updatedPost : post))
-        );
-      }
-    } catch (error) {
-      console.error("❌ Error liking post:", error);
+    const updatedPost = await likePost(id, token);
+    if (updatedPost) {
+      setPosts(posts.map((post) => (post._id === id ? updatedPost : post)));
     }
   };
 
-  const handleAddComment = async (postId) => {
-    if (!newComments[postId]?.trim()) return;
+  const handleAddComment = async (id) => {
+    if (!newComments[id]?.trim()) return;
 
-    try {
-      const updatedPost = await addComment(postId, newComments[postId]);
-      if (updatedPost) {
-        setPosts((prevPosts) =>
-          prevPosts.map((post) => (post._id === postId ? updatedPost : post))
-        );
-        setNewComments({ ...newComments, [postId]: "" });
-        setShowInput({ ...showInput, [postId]: false });
-      }
-    } catch (error) {
-      console.error("❌ Error adding comment:", error);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("You need to be logged in to comment.");
+      return;
+    }
+
+    const response = await axios.post(`${API_BASE_URL}/api/posts/${postId}/comment`, {
+      comment: newComments[postId],
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    
+    const updatedPost = response.data;
+    if (updatedPost) {
+      setPosts(posts.map((post) => (post._id === id ? updatedPost : post)));
+      setNewComments({ ...newComments, [id]: "" });
+      setShowInput({ ...showInput, [id]: false });
     }
   };
 
   const handleDeletePost = async (id) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
-
-    const token = localStorage.getItem("token");
-    try {
-      await axios.delete(`${API_BASE_URL}/api/posts/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    const success = await deletePost(id);
+    if (success) {
       setPosts(posts.filter((post) => post._id !== id));
-    } catch (error) {
-      console.error("❌ Error deleting post:", error);
     }
   };
 
   const handleDeleteComment = async (postId, commentId) => {
     if (!confirm("Are you sure you want to delete this comment?")) return;
 
-    const token = localStorage.getItem("token");
-    try {
-      const response = await axios.delete(
-        `${API_BASE_URL}/api/posts/${postId}/comments/${commentId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+    const updatedPost = await deleteComment(postId, commentId);
 
+    if (updatedPost) {
+      console.log("✅ Updating UI after comment deletion");
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post._id === postId
-            ? { ...post, comments: response.data.post.comments }
+            ? { ...post, comments: updatedPost.comments }
             : post
         )
       );
-    } catch (error) {
-      console.error("❌ Error deleting comment:", error);
     }
   };
 
@@ -185,13 +218,23 @@ export default function Home() {
         return;
       }
 
-      await axios.delete(`${API_BASE_URL}/api/auth/unfriend/${friendId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/unfriend/${friendId}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
 
+      alert(response.data.message);
       setFriends(friends.filter((friend) => friend._id !== friendId));
     } catch (error) {
-      console.error("❌ Error unfriending:", error);
+      console.error(
+        "Error unfriending:",
+        error.response?.data || error.message
+      );
+      alert("Failed to unfriend.");
     }
   };
 

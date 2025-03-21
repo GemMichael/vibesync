@@ -92,10 +92,6 @@ router.get("/random-users", async (req, res) => {
 
 router.get("/user/:id", async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ error: "Invalid user ID" });
-    }
-
     const user = await User.findById(req.params.id)
       .select("-password")
       .populate("friends", "_id name email"); 
@@ -108,7 +104,6 @@ router.get("/user/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch user data" });
   }
 });
-
 
 
 router.get("/search", async (req, res) => {
@@ -134,9 +129,8 @@ router.post("/add-friend/:friendId", auth, async (req, res) => {
     const friend = await User.findById(friendId);
 
     if (!friend) return res.status(404).json({ error: "User not found" });
-    if (user.friends.includes(friendId)) {
+    if (user.friends.includes(friendId))
       return res.status(400).json({ error: "Already friends" });
-    }
 
     user.friends.push(friendId);
     friend.friends.push(user._id); 
@@ -149,7 +143,6 @@ router.post("/add-friend/:friendId", auth, async (req, res) => {
     res.status(500).json({ error: "Failed to add friend" });
   }
 });
-
 
 router.post("/unfriend/:friendId", auth, async (req, res) => {
   try {
@@ -178,11 +171,13 @@ router.post("/message/:recipientId", auth, async (req, res) => {
   try {
     const { recipientId } = req.params;
     const { text } = req.body;
-    if (!text.trim()) return res.status(400).json({ error: "Message text is required" });
+    if (!text)
+      return res.status(400).json({ error: "Message text is required" });
 
     const sender = await User.findById(req.user.id);
     const recipient = await User.findById(recipientId);
-    if (!recipient) return res.status(404).json({ error: "Recipient not found" });
+    if (!recipient)
+      return res.status(404).json({ error: "Recipient not found" });
 
     const message = {
       sender: sender._id,
@@ -197,7 +192,7 @@ router.post("/message/:recipientId", auth, async (req, res) => {
     await sender.save();
     await recipient.save();
 
-    res.json({ message: "Message sent successfully", data: message });
+    res.json({ message: "Message sent successfully", data: message }); 
   } catch (error) {
     console.error("Error sending message:", error);
     res.status(500).json({ error: "Failed to send message" });

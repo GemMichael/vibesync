@@ -10,28 +10,31 @@ export default function ProfilePage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (!storedUser) {
-          router.push("/Login");
-          return;
-        }
-  
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/user/${userId}`
-        );
-  
-        setUser(response.data);
-      } catch (error) {
-        console.error("❌ Error fetching user profile:", error);
-        setTimeout(() => router.push("/404"), 2000);
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      if (storedUser) {
+        setUser(storedUser);
+        setLoadingUser(false);
+
+        const getUserPosts = async () => {
+          try {
+            const userPosts = await fetchUserPosts(storedUser.id);
+            setPosts(userPosts);
+          } catch (error) {
+            console.error("Error fetching posts:", error);
+          } finally {
+            setLoadingPosts(false);
+          }
+        };
+        getUserPosts();
+      } else {
+        setLoadingUser(false);
       }
-    };
-  
-    fetchUserProfile();
-  }, [userId]);
-  
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      setLoadingUser(false);
+    }
+  }, []);
 
   if (loadingUser)
     return (
