@@ -4,14 +4,12 @@ const Post = require("../models/Post");
 const auth = require("../middleware/auth");
 const User = require("../models/User");
 
-
 router.get("/", async (req, res) => {
   try {
     const posts = await Post.find()
       .sort({ createdAt: -1 })
       .select("_id text likes comments user userName")
       .populate("user", "name");
-
 
     const formattedPosts = posts.map((post) => ({
       ...post.toObject(),
@@ -24,7 +22,6 @@ router.get("/", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch posts" });
   }
 });
-
 
 router.post("/", auth, async (req, res) => {
   try {
@@ -50,31 +47,24 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
-
 router.patch("/:id/like", auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ error: "Post not found" });
 
-    const userId = req.user.id;
-
-    if (post.user.toString() === userId) {
-      return res.status(400).json({ error: "You cannot like your own post" });
+    if (post.likes.includes(req.user.id)) {
+      post.likes = post.likes.filter((userId) => userId !== req.user.id);
+    } else {
+      post.likes.push(req.user.id);
     }
-
-    const hasLiked = post.likes.includes(userId);
-    post.likes = hasLiked
-      ? post.likes.filter((id) => id.toString() !== userId)
-      : [...post.likes, userId];
 
     await post.save();
     res.json(post);
   } catch (error) {
-    console.error("❌ Error liking post:", error);
+    console.error("❌ Error handling like:", error);
     res.status(500).json({ error: "Failed to like post" });
   }
 });
-
 
 router.post("/:id/comment", auth, async (req, res) => {
   try {
@@ -102,15 +92,15 @@ router.post("/:id/comment", auth, async (req, res) => {
   }
 });
 
-
 router.delete("/:id", auth, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ error: "Post not found" });
 
-
     if (post.user.toString() !== req.user.id) {
-      return res.status(403).json({ error: "Unauthorized to delete this post" });
+      return res
+        .status(403)
+        .json({ error: "Unauthorized to delete this post" });
     }
 
     await post.deleteOne();
@@ -120,7 +110,6 @@ router.delete("/:id", auth, async (req, res) => {
     res.status(500).json({ error: "Failed to delete post" });
   }
 });
-
 
 router.delete("/:postId/comments/:commentId", auth, async (req, res) => {
   try {
@@ -133,9 +122,10 @@ router.delete("/:postId/comments/:commentId", auth, async (req, res) => {
     if (commentIndex === -1)
       return res.status(404).json({ error: "Comment not found" });
 
-
     if (post.comments[commentIndex].user.toString() !== req.user.id) {
-      return res.status(403).json({ error: "Unauthorized to delete this comment" });
+      return res
+        .status(403)
+        .json({ error: "Unauthorized to delete this comment" });
     }
 
     post.comments.splice(commentIndex, 1);
@@ -146,8 +136,6 @@ router.delete("/:postId/comments/:commentId", auth, async (req, res) => {
     res.status(500).json({ error: "Failed to delete comment" });
   }
 });
-
-
 
 router.get("/user/:userId", async (req, res) => {
   try {
