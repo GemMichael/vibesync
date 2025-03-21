@@ -95,7 +95,9 @@ export default function Home() {
     const getSuggestedUsers = async () => {
       const storedUser = JSON.parse(localStorage.getItem("user"));
       if (!storedUser) return;
-      const response = await axios.get(`${API_BASE_URL}/api/auth/random-users?userId=${storedUser.id}`);
+      const response = await axios.get(
+        `${API_BASE_URL}/api/auth/random-users?userId=${storedUser.id}`
+      );
       const users = response.data;
       setSuggestedUsers(users);
     };
@@ -118,7 +120,7 @@ export default function Home() {
     if (!isLoading) {
       const getPosts = async () => {
         try {
-          const response = await axios.get(`${API_BASE_URL}/api/posts`); 
+          const response = await axios.get(`${API_BASE_URL}/api/posts`);
           setPosts(response.data);
         } catch (error) {
           console.error("❌ Error fetching posts:", error);
@@ -140,9 +142,13 @@ export default function Home() {
       return;
     }
 
-    const newPost = await axios.post(`${API_BASE_URL}/api/posts`, { text: message }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const newPost = await axios.post(
+      `${API_BASE_URL}/api/posts`,
+      { text: message },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
     if (newPost) {
       setPosts([newPost, ...posts]);
       setMessage("");
@@ -162,22 +168,22 @@ export default function Home() {
     }
   };
 
-  const handleAddComment = async (postId) => { 
+  const handleAddComment = async (postId) => {
     if (!newComments[postId]?.trim()) return;
-  
+
     const token = localStorage.getItem("token");
     if (!token) {
       alert("You need to be logged in to comment.");
       return;
     }
-  
+
     try {
       const response = await axios.post(
         `${API_BASE_URL}/api/posts/${postId}/comment`,
         { comment: newComments[postId] },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-  
+
       const updatedPost = response.data;
       setPosts(posts.map((post) => (post._id === postId ? updatedPost : post)));
       setNewComments({ ...newComments, [postId]: "" });
@@ -187,30 +193,52 @@ export default function Home() {
       alert("Failed to add comment.");
     }
   };
-  
 
   const handleDeletePost = async (id) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
-    const success = await deletePost(id);
-    if (success) {
+
+    const token = localStorage.getItem("token");
+    try {
+      await axios.delete(`${API_BASE_URL}/api/posts/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setPosts(posts.filter((post) => post._id !== id));
+    } catch (error) {
+      console.error(
+        "❌ Error deleting post:",
+        error.response?.data || error.message
+      );
+      alert("Failed to delete post.");
     }
   };
 
   const handleDeleteComment = async (postId, commentId) => {
     if (!confirm("Are you sure you want to delete this comment?")) return;
 
-    const updatedPost = await deleteComment(postId, commentId);
+    const token = localStorage.getItem("token");
+    try {
+      const response = await axios.delete(
+        `${API_BASE_URL}/api/posts/${postId}/comments/${commentId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-    if (updatedPost) {
-      console.log("✅ Updating UI after comment deletion");
+      console.log("✅ Comment deleted successfully");
+
       setPosts((prevPosts) =>
         prevPosts.map((post) =>
           post._id === postId
-            ? { ...post, comments: updatedPost.comments }
+            ? { ...post, comments: response.data.post.comments }
             : post
         )
       );
+    } catch (error) {
+      console.error(
+        "❌ Error deleting comment:",
+        error.response?.data || error.message
+      );
+      alert("Failed to delete comment.");
     }
   };
 
@@ -229,7 +257,6 @@ export default function Home() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      
 
       alert(response.data.message);
       setFriends(friends.filter((friend) => friend._id !== friendId));

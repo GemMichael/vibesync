@@ -105,18 +105,16 @@ router.post("/:id/comment", auth, async (req, res) => {
 
 router.delete("/:id", auth, async (req, res) => {
   try {
-    const post = await Post.findOneAndDelete({
-      _id: req.params.id,
-      user: req.user.id,
-    });
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ error: "Post not found" });
 
-    if (!post) {
-      return res
-        .status(404)
-        .json({ error: "Post not found or unauthorized to delete" });
+
+    if (post.user.toString() !== req.user.id) {
+      return res.status(403).json({ error: "Unauthorized to delete this post" });
     }
 
-    res.json({ message: "✅ Post deleted successfully" });
+    await post.deleteOne();
+    res.json({ message: "Post deleted successfully" });
   } catch (error) {
     console.error("❌ Error deleting post:", error);
     res.status(500).json({ error: "Failed to delete post" });
@@ -126,10 +124,6 @@ router.delete("/:id", auth, async (req, res) => {
 
 router.delete("/:postId/comments/:commentId", auth, async (req, res) => {
   try {
-    console.log(
-      `🗑️ Deleting comment: Post ID: ${req.params.postId}, Comment ID: ${req.params.commentId}`
-    );
-
     const post = await Post.findById(req.params.postId);
     if (!post) return res.status(404).json({ error: "Post not found" });
 
@@ -139,22 +133,20 @@ router.delete("/:postId/comments/:commentId", auth, async (req, res) => {
     if (commentIndex === -1)
       return res.status(404).json({ error: "Comment not found" });
 
+
     if (post.comments[commentIndex].user.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .json({ error: "Unauthorized to delete this comment" });
+      return res.status(403).json({ error: "Unauthorized to delete this comment" });
     }
 
     post.comments.splice(commentIndex, 1);
     await post.save();
-
-    console.log("✅ Comment deleted successfully");
-    res.json({ message: "✅ Comment deleted successfully", updatedPost: post });
+    res.json({ message: "Comment deleted successfully", post });
   } catch (error) {
     console.error("❌ Error deleting comment:", error);
     res.status(500).json({ error: "Failed to delete comment" });
   }
 });
+
 
 
 router.get("/user/:userId", async (req, res) => {
