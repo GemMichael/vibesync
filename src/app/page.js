@@ -162,28 +162,32 @@ export default function Home() {
     }
   };
 
-  const handleAddComment = async (id) => {
-    if (!newComments[id]?.trim()) return;
-
+  const handleAddComment = async (postId) => { 
+    if (!newComments[postId]?.trim()) return;
+  
     const token = localStorage.getItem("token");
     if (!token) {
       alert("You need to be logged in to comment.");
       return;
     }
-
-    const response = await axios.post(`${API_BASE_URL}/api/posts/${postId}/comment`, {
-      comment: newComments[postId],
-    }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    
-    const updatedPost = response.data;
-    if (updatedPost) {
-      setPosts(posts.map((post) => (post._id === id ? updatedPost : post)));
-      setNewComments({ ...newComments, [id]: "" });
-      setShowInput({ ...showInput, [id]: false });
+  
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/posts/${postId}/comment`,
+        { comment: newComments[postId] },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+  
+      const updatedPost = response.data;
+      setPosts(posts.map((post) => (post._id === postId ? updatedPost : post)));
+      setNewComments({ ...newComments, [postId]: "" });
+      setShowInput({ ...showInput, [postId]: false });
+    } catch (error) {
+      console.error("❌ Error adding comment:", error);
+      alert("Failed to add comment.");
     }
   };
+  
 
   const handleDeletePost = async (id) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
