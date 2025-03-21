@@ -1,9 +1,9 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-const POSTS_API = `${API_BASE_URL}/posts`;
-const AUTH_API = `${API_BASE_URL}/auth`;
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const POSTS_API = `${API_BASE_URL}/api/posts`;
+const AUTH_API = `${API_BASE_URL}/api/auth`;
 
 const getAuthHeaders = () => {
   if (typeof window === "undefined") return {};
@@ -40,7 +40,7 @@ export const createPost = async (text) => {
 export const likePost = async (id) => {
   try {
     const response = await axios.patch(
-      `${API_BASE_URL}/api/posts/${id}/like`,
+      `${POSTS_API}/${id}/like`,
       {},
       getAuthHeaders()
     );
