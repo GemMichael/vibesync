@@ -40,7 +40,7 @@ export const createPost = async (text) => {
 export const likePost = async (id) => {
   try {
     const response = await axios.patch(
-      `${POSTS_API}/${id}/like`,
+      `${API_BASE_URL}/api/posts/${id}/like`,
       {},
       getAuthHeaders()
     );
