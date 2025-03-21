@@ -86,7 +86,7 @@ export default function Home() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (message.trim() === "") return;
+    if (!message.trim()) return;
 
     const token = localStorage.getItem("token");
     if (!token) {
@@ -95,14 +95,11 @@ export default function Home() {
     }
 
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/posts`,
-        { text: message },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setPosts([response.data, ...posts]);
-      setMessage("");
+      const newPost = await createPost(message);
+      if (newPost) {
+        setPosts((prevPosts) => [newPost, ...prevPosts]);
+        setMessage("");
+      }
     } catch (error) {
       console.error("❌ Error creating post:", error);
     }
@@ -115,59 +112,30 @@ export default function Home() {
       return;
     }
 
-    setPosts((prevPosts) =>
-      prevPosts.map((post) =>
-        post._id === id ? { ...post, likes: [...post.likes, user.id] } : post
-      )
-    );
-
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/posts/${id}/like`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      console.log("✅ Like response:", response.data);
-      setPosts((prevPosts) =>
-        prevPosts.map((post) => (post._id === id ? response.data : post))
-      );
+      const updatedPost = await likePost(id);
+      if (updatedPost) {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) => (post._id === id ? updatedPost : post))
+        );
+      }
     } catch (error) {
       console.error("❌ Error liking post:", error);
-
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post._id === id
-            ? { ...post, likes: post.likes.filter((like) => like !== user.id) }
-            : post
-        )
-      );
-
-      alert("Failed to like post.");
     }
   };
 
   const handleAddComment = async (postId) => {
     if (!newComments[postId]?.trim()) return;
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("You need to be logged in to comment.");
-      return;
-    }
-
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/posts/${postId}/comment`,
-        { comment: newComments[postId] },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setPosts(
-        posts.map((post) => (post._id === postId ? response.data : post))
-      );
-      setNewComments({ ...newComments, [postId]: "" });
-      setShowInput({ ...showInput, [postId]: false });
+      const updatedPost = await addComment(postId, newComments[postId]);
+      if (updatedPost) {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) => (post._id === postId ? updatedPost : post))
+        );
+        setNewComments({ ...newComments, [postId]: "" });
+        setShowInput({ ...showInput, [postId]: false });
+      }
     } catch (error) {
       console.error("❌ Error adding comment:", error);
     }

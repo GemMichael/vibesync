@@ -44,13 +44,15 @@ export const likePost = async (id) => {
       {},
       getAuthHeaders()
     );
-    return response.data;
+    return response.data.post;
   } catch (error) {
-    console.error("❌ Error liking post:", error.response?.data || error.message);
+    console.error(
+      "❌ Error liking post:",
+      error.response?.data || error.message
+    );
     return null;
   }
 };
-
 
 export const addComment = async (postId, comment) => {
   try {
@@ -59,15 +61,13 @@ export const addComment = async (postId, comment) => {
       { comment },
       getAuthHeaders()
     );
-    return response.data;
+    return response.data.post;
   } catch (error) {
-    console.error(
-      "❌ Error adding comment:",
-      error.response?.data || error.message
-    );
+    console.error("❌ Error adding comment:", error.response?.data || error.message);
     return null;
   }
 };
+
 
 export const deleteComment = async (postId, commentId) => {
   try {
@@ -187,12 +187,9 @@ export const sendMessage = async (recipientId, text) => {
 
 export const fetchMessages = async (friendId) => {
   try {
-    const response = await axios.get(
-      `${AUTH_API}/messages/${friendId}`,
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }
-    );
+    const response = await axios.get(`${AUTH_API}/messages/${friendId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
     return response.data;
   } catch (error) {
     console.error(
@@ -205,12 +202,9 @@ export const fetchMessages = async (friendId) => {
 
 export const fetchUser = async (userId) => {
   try {
-    const response = await axios.get(
-      `${AUTH_API}/user/${userId}`,
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }
-    );
+    const response = await axios.get(`${AUTH_API}/user/${userId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
     return response.data;
   } catch (error) {
     console.error(
@@ -223,8 +217,7 @@ export const fetchUser = async (userId) => {
 
 export const fetchChatUsers = async () => {
   try {
-    const response = await axios.get(      `${AUTH_API}/chats`,
-      {
+    const response = await axios.get(`${AUTH_API}/chats`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
     return response.data;
