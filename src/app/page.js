@@ -115,6 +115,12 @@ export default function Home() {
       return;
     }
 
+    setPosts((prevPosts) =>
+      prevPosts.map((post) =>
+        post._id === id ? { ...post, likes: [...post.likes, user.id] } : post
+      )
+    );
+
     try {
       const response = await axios.post(
         `${API_BASE_URL}/api/posts/${id}/like`,
@@ -122,9 +128,22 @@ export default function Home() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setPosts(posts.map((post) => (post._id === id ? response.data : post)));
+      console.log("✅ Like response:", response.data);
+      setPosts((prevPosts) =>
+        prevPosts.map((post) => (post._id === id ? response.data : post))
+      );
     } catch (error) {
       console.error("❌ Error liking post:", error);
+
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post._id === id
+            ? { ...post, likes: post.likes.filter((like) => like !== user.id) }
+            : post
+        )
+      );
+
+      alert("Failed to like post.");
     }
   };
 
