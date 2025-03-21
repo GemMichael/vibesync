@@ -29,10 +29,10 @@ router.post("/", auth, async (req, res) => {
     if (!text.trim())
       return res.status(400).json({ error: "Text is required" });
 
-    const user = await User.findById(req.user.id).lean();
+    const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const newPost = await Post.create({
+    const newPost = new Post({
       text,
       user: user._id,
       userName: user.name,
@@ -40,12 +40,14 @@ router.post("/", auth, async (req, res) => {
       comments: [],
     });
 
+    await newPost.save();
     res.status(201).json(newPost);
   } catch (error) {
     console.error("❌ Error creating post:", error);
     res.status(500).json({ error: "Failed to create post" });
   }
 });
+
 
 router.patch("/:id/like", auth, async (req, res) => {
   try {
@@ -58,16 +60,17 @@ router.patch("/:id/like", auth, async (req, res) => {
     if (index === -1) {
       post.likes.push(userId);  
     } else {
-      post.likes.splice(index, 1);  
+      post.likes = post.likes.filter(id => id.toString() !== userId); 
     }
 
     await post.save();
-    res.json({ message: "Like updated", likes: post.likes.length });
+    res.json({ post });
   } catch (error) {
     console.error("❌ Error handling like:", error);
     res.status(500).json({ error: "Failed to like post" });
   }
 });
+
 
 
 router.post("/:id/comment", auth, async (req, res) => {
@@ -90,12 +93,13 @@ router.post("/:id/comment", auth, async (req, res) => {
     post.comments.push(newComment);
     await post.save();
 
-    res.json({ message: "Comment added", post });
+    res.json({ post });
   } catch (error) {
     console.error("❌ Error adding comment:", error);
     res.status(500).json({ error: "Failed to add comment" });
   }
 });
+
 
 router.delete("/:id", auth, async (req, res) => {
   try {
